@@ -9,7 +9,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  enforcementAction: warn  # Phase 1: Audit mode
+  enforcementAction: deny  # Phase 1: Audit mode
   match:
     kinds:
       - apiGroups: ["apps"]
@@ -36,7 +36,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  enforcementAction: warn  # Phase 1: Audit mode
+  enforcementAction: deny  # Phase 1: Audit mode
   match:
     kinds:
       - apiGroups: ["apps"]
@@ -67,7 +67,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  enforcementAction: warn  # Phase 1: Audit mode
+  enforcementAction: deny  # Phase 1: Audit mode
   match:
     kinds:
       - apiGroups: ["apps"]
@@ -97,7 +97,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  enforcementAction: warn  # Phase 1: Audit mode
+  enforcementAction: deny  # Phase 1: Audit mode
   match:
     kinds:
       - apiGroups: ["apps"]
@@ -126,7 +126,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  enforcementAction: warn  # Phase 1: Audit mode
+  enforcementAction: deny  # Phase 1: Audit mode
   match:
     kinds:
       - apiGroups: ["apps"]

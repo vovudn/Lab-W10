@@ -87,6 +87,6 @@ spec:
     jsonPointers:
     - /webhooks
   - group: apiextensions.k8s.io
-    kind: CustomResourceDefinition
-    jsonPointers:
+    kind: CustomResourceDefinition 
+    jsonPointers:                 
     - /spec/preserveUnknownFields
