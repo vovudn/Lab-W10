@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-gatekeeper-violations
+  namespace: demo
+spec:
+  # --- VI PHẠM LUẬT 4: Bật hostNetwork ---
+  hostNetwork: true 
+  
+  # --- VI PHẠM LUẬT 3: Chạy quyền root ---
+  securityContext:
+    runAsUser: 0 
+    
+  containers:
+  - name: nginx
+    # --- VI PHẠM LUẬT 1: Dùng tag :latest ---
+    image: nginx:latest 
+    
+    # --- VI PHẠM LUẬT 2: Thiếu cấu hình resources.limits ---
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+        # Không có phần limits dưới này

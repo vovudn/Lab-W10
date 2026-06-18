@@ -1,0 +1,29 @@
+# ArgoCD App: Deploy ClusterImagePolicy
+# Sync wave 0: Deploy policies sau khi policy-controller đã sẵn sàng
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: image-policies
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vovudn/Lab-W10.git
+    path: policies
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

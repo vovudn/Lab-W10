@@ -1,0 +1,27 @@
+# ClusterImagePolicy: Yêu cầu images phải được ký bởi Cosign
+# Chỉ áp dụng cho namespaces có label: policy.sigstore.dev/include=true
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: require-signed-images
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  images:
+  # Pattern cho images cần verify
+  - glob: "ghcr.io/vovudn/**"
+  
+  authorities:
+  - name: cosign-key
+    key:
+      data: |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE++WXl2Q91LZuDks2BF79ESjJqyea
+        vfFxDTMQReaWwPcg1KH3qghGSmZ6Qw6o+Vk0GIAW/EvyYJvI9/dn4DY4ag==
+        -----END PUBLIC KEY-----
+  
+  # Match policy chỉ cho namespaces có label
+  match:
+  - selector:
+      matchLabels:
+        policy.sigstore.dev/include: "true"

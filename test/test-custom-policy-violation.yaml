@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-replicas-violation
+  namespace: demo
+spec:
+  # --- VI PHẠM LUẬT 5 (CUSTOM): Số lượng replicas lớn hơn 5 ---
+  replicas: 6 
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.25.1 # Đã sửa tag chính xác
+        resources:
+          limits:           # Đã sửa bổ sung limits
+            memory: "128Mi"
+            cpu: "500m"
