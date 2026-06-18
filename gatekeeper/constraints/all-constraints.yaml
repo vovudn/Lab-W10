@@ -1,0 +1,145 @@
+# Gatekeeper Constraints - WARN Mode (Phase 1: Audit)
+# Chứa 4 constraint gốc từ gatekeeper-library + 1 custom constraint
+---
+# Constraint 1 (F-01): Cấm image tag :latest
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sNoLatestImage
+metadata:
+  name: no-latest-image
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  enforcementAction: warn  # Phase 1: Audit mode
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet", "ReplicaSet"]
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["argoproj.io"]
+        kinds: ["Rollout"]
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - gatekeeper-system
+      - argocd
+      - monitoring
+      - argo-rollouts
+
+---
+# Constraint 2 (F-02): Bắt buộc khai báo resources.limits
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredResources
+metadata:
+  name: require-resource-limits
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  enforcementAction: warn  # Phase 1: Audit mode
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet", "ReplicaSet"]
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["argoproj.io"]
+        kinds: ["Rollout"]
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - gatekeeper-system
+      - argocd
+      - monitoring
+      - argo-rollouts
+  parameters:
+    limits:
+      - cpu
+      - memory
+
+---
+# Constraint 3 (F-04): Cấm chạy quyền root (runAsUser: 0)
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSPAllowedUsers
+metadata:
+  name: no-root-user
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  enforcementAction: warn  # Phase 1: Audit mode
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet", "ReplicaSet"]
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["argoproj.io"]
+        kinds: ["Rollout"]
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - gatekeeper-system
+      - argocd
+      - monitoring
+      - argo-rollouts
+  parameters:
+    runAsUser:
+      rule: MustRunAsNonRoot
+
+---
+# Constraint 4: Cấm sử dụng hostNetwork: true
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSPHostNetworkingPorts
+metadata:
+  name: no-host-network
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  enforcementAction: warn  # Phase 1: Audit mode
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet", "ReplicaSet"]
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["argoproj.io"]
+        kinds: ["Rollout"]
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - gatekeeper-system
+      - argocd
+      - monitoring
+      - argo-rollouts
+  parameters:
+    hostNetwork: false
+
+---
+# Constraint 5 (Custom): Reject Deployment nếu replicas > 5
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sMaxReplicas
+metadata:
+  name: max-5-replicas
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  enforcementAction: warn  # Phase 1: Audit mode
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "ReplicaSet"]
+      - apiGroups: ["argoproj.io"]
+        kinds: ["Rollout"]
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - gatekeeper-system
+      - argocd
+      - monitoring
+      - argo-rollouts
+  parameters:
+    max: 5

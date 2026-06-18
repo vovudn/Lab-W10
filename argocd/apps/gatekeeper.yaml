@@ -1,0 +1,85 @@
+# ArgoCD App: Deploy OPA Gatekeeper (Controller + Templates + Constraints)
+# Sử dụng sync-wave để đảm bảo thứ tự triển khai đúng
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gatekeeper
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  project: default
+  sources:
+    # Source 1: Gatekeeper Controller (Helm Chart)
+    - repoURL: https://open-policy-agent.github.io/gatekeeper/charts
+      chart: gatekeeper
+      targetRevision: 3.18.0
+      helm:
+        values: |
+          # Enable audit để scan existing resources
+          audit:
+            replicas: 1
+            logLevel: INFO
+            resources:
+              limits:
+                cpu: 1000m
+                memory: 512Mi
+              requests:
+                cpu: 100m
+                memory: 256Mi
+            
+          # Controller settings
+          replicas: 1
+          logLevel: INFO
+          
+          # Webhook settings
+          enableDeleteOperations: false
+          validatingWebhookTimeoutSeconds: 3
+          
+          # Resource limits cho Gatekeeper controller pods
+          controllerManager:
+            resources:
+              limits:
+                cpu: 1000m
+                memory: 512Mi
+              requests:
+                cpu: 100m
+                memory: 256Mi
+    
+    # Source 2: ConstraintTemplates (sync-wave -1 trong file)
+    - repoURL: https://github.com/vovudn/Lab-W10.git
+      path: gatekeeper/constraints
+      targetRevision: main
+      directory:
+        include: all-templates.yaml
+    
+    # Source 3: Constraints (sync-wave 0 trong file)
+    - repoURL: https://github.com/vovudn/Lab-W10.git
+      path: gatekeeper/constraints
+      targetRevision: main
+      directory:
+        include: all-constraints.yaml
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gatekeeper-system
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  ignoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: ValidatingWebhookConfiguration
+    jsonPointers:
+    - /webhooks

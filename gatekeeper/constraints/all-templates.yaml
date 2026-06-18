@@ -1,0 +1,262 @@
+# Gatekeeper ConstraintTemplates
+# Chứa 4 templates từ gatekeeper-library + 1 custom template (Rego)
+---
+# ConstraintTemplate 1 (F-01): Cấm image tag :latest
+# Source: https://github.com/open-policy-agent/gatekeeper-library
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8snolatestimage
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    metadata.gatekeeper.sh/title: "Disallow Latest Tag"
+    metadata.gatekeeper.sh/version: 1.0.0
+    description: >-
+      Requires container images to have an image tag different from "latest".
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sNoLatestImage
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8snolatestimage
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          endswith(container.image, ":latest")
+          msg := sprintf("Container '%v' uses image tag ':latest' which is prohibited", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not contains(container.image, ":")
+          msg := sprintf("Container '%v' has no image tag specified (defaults to :latest)", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          endswith(container.image, ":latest")
+          msg := sprintf("InitContainer '%v' uses image tag ':latest' which is prohibited", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          not contains(container.image, ":")
+          msg := sprintf("InitContainer '%v' has no image tag specified (defaults to :latest)", [container.name])
+        }
+
+---
+# ConstraintTemplate 2 (F-02): Bắt buộc khai báo resources.limits
+# Source: https://github.com/open-policy-agent/gatekeeper-library
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredresources
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    metadata.gatekeeper.sh/title: "Required Resources"
+    metadata.gatekeeper.sh/version: 1.0.0
+    description: >-
+      Requires containers to have defined resource limits.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredResources
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            limits:
+              type: array
+              description: "A list of limits that should be enforced (cpu, memory)."
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredresources
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          required := input.parameters.limits[_]
+          not container.resources.limits[required]
+          msg := sprintf("Container '%v' missing required resource limit: %v", [container.name, required])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.resources.limits
+          msg := sprintf("Container '%v' missing resources.limits section", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          required := input.parameters.limits[_]
+          not container.resources.limits[required]
+          msg := sprintf("InitContainer '%v' missing required resource limit: %v", [container.name, required])
+        }
+
+---
+# ConstraintTemplate 3 (F-04): Cấm chạy với quyền root
+# Source: https://github.com/open-policy-agent/gatekeeper-library
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8spspallowedusers
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    metadata.gatekeeper.sh/title: "Allowed Users"
+    metadata.gatekeeper.sh/version: 1.0.0
+    description: >-
+      Controls the user and group IDs of the container and pod.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sPSPAllowedUsers
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            runAsUser:
+              type: object
+              properties:
+                rule:
+                  type: string
+                  description: "Rule for user ID (MustRunAsNonRoot, MustRunAs)"
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8spspallowedusers
+
+        violation[{"msg": msg}] {
+          input.parameters.runAsUser.rule == "MustRunAsNonRoot"
+          container := input.review.object.spec.containers[_]
+          container.securityContext.runAsUser == 0
+          msg := sprintf("Container '%v' is running as root user (UID 0)", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          input.parameters.runAsUser.rule == "MustRunAsNonRoot"
+          input.review.object.spec.securityContext.runAsUser == 0
+          msg := "Pod securityContext is set to run as root user (UID 0)"
+        }
+
+        violation[{"msg": msg}] {
+          input.parameters.runAsUser.rule == "MustRunAsNonRoot"
+          not input.review.object.spec.securityContext.runAsUser
+          container := input.review.object.spec.containers[_]
+          not container.securityContext.runAsUser
+          msg := sprintf("Container '%v' does not specify runAsUser (may default to root)", [container.name])
+        }
+
+---
+# ConstraintTemplate 4: Cấm sử dụng hostNetwork
+# Source: https://github.com/open-policy-agent/gatekeeper-library
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8spsphostnetworkingports
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    metadata.gatekeeper.sh/title: "Host Networking Ports"
+    metadata.gatekeeper.sh/version: 1.0.0
+    description: >-
+      Controls usage of host network namespace and host ports.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sPSPHostNetworkingPorts
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            hostNetwork:
+              type: boolean
+              description: "Determines if hostNetwork is allowed"
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8spsphostnetworkingports
+
+        violation[{"msg": msg}] {
+          input.parameters.hostNetwork == false
+          input.review.object.spec.hostNetwork == true
+          msg := "HostNetwork is not allowed. Pod is trying to use hostNetwork: true"
+        }
+
+        violation[{"msg": msg}] {
+          input.parameters.hostNetwork == false
+          container := input.review.object.spec.containers[_]
+          container.ports[_].hostPort
+          msg := sprintf("Container '%v' is using hostPort which requires hostNetwork", [container.name])
+        }
+
+---
+# ConstraintTemplate 5 (Custom): Max Replicas - TỰ VIẾT REGO
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8smaxreplicas
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    metadata.gatekeeper.sh/title: "Max Replicas"
+    metadata.gatekeeper.sh/version: 1.0.0
+    description: >-
+      Requires workloads to have replicas count not exceeding the maximum.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sMaxReplicas
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            max:
+              type: integer
+              description: "Maximum number of replicas allowed"
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8smaxreplicas
+
+        # Deployment
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Deployment"
+          replicas := input.review.object.spec.replicas
+          max := input.parameters.max
+          replicas > max
+          msg := sprintf("Deployment '%v' has %v replicas, exceeding maximum of %v", [input.review.object.metadata.name, replicas, max])
+        }
+
+        # ReplicaSet
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "ReplicaSet"
+          replicas := input.review.object.spec.replicas
+          max := input.parameters.max
+          replicas > max
+          msg := sprintf("ReplicaSet '%v' has %v replicas, exceeding maximum of %v", [input.review.object.metadata.name, replicas, max])
+        }
+
+        # StatefulSet
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "StatefulSet"
+          replicas := input.review.object.spec.replicas
+          max := input.parameters.max
+          replicas > max
+          msg := sprintf("StatefulSet '%v' has %v replicas, exceeding maximum of %v", [input.review.object.metadata.name, replicas, max])
+        }
+
+        # Argo Rollout
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Rollout"
+          replicas := input.review.object.spec.replicas
+          max := input.parameters.max
+          replicas > max
+          msg := sprintf("Rollout '%v' has %v replicas, exceeding maximum of %v", [input.review.object.metadata.name, replicas, max])
+        }
