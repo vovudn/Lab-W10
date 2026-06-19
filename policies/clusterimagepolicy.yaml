@@ -1,5 +1,12 @@
 # ClusterImagePolicy: Yêu cầu images phải được ký bởi Cosign
 # Chỉ áp dụng cho namespaces có label: policy.sigstore.dev/include=true
+#
+# ⚠️ LƯU Ý: 
+# - Policy này áp dụng TOÀN CỤM (ClusterImagePolicy)
+# - Để chỉ enforce trên namespace cụ thể, phải label namespace:
+#   kubectl label namespace demo policy.sigstore.dev/include=true
+# - Namespace KHÔNG có label này sẽ KHÔNG bị enforce
+#
 apiVersion: policy.sigstore.dev/v1beta1
 kind: ClusterImagePolicy
 metadata:
@@ -19,8 +26,3 @@ spec:
         MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE++WXl2Q91LZuDks2BF79ESjJqyea
         vfFxDTMQReaWwPcg1KH3qghGSmZ6Qw6o+Vk0GIAW/EvyYJvI9/dn4DY4ag==
         -----END PUBLIC KEY-----
-  
-  # Match policy chỉ cho namespaces có label
-  match:
-  - namespaces:
-    - demo

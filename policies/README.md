@@ -4,6 +4,19 @@
 
 Sigstore Policy Controller enforces image signature verification using Cosign.
 
+## ⚠️ QUAN TRỌNG: Namespace Filtering
+
+ClusterImagePolicy áp dụng **TOÀN CỤM** theo mặc định. Để chỉ enforce trên namespace cụ thể:
+
+1. **Policy Controller tự động chỉ enforce trên namespace có label**:
+   ```
+   policy.sigstore.dev/include=true
+   ```
+
+2. **Namespace KHÔNG có label này sẽ KHÔNG bị policy enforce** ✅
+
+3. **System namespaces tự động được exempt** (kube-system, kube-public, etc.)
+
 ## ClusterImagePolicy
 
 ### Structure
@@ -15,7 +28,7 @@ metadata:
   name: require-signed-images
 spec:
   images:
-  - glob: "ghcr.io/vovudn/**"  # Images to verify
+  - glob: "ghcr.io/vovudn/**"  # Images cần verify
   
   authorities:
   - name: cosign-key
@@ -24,30 +37,25 @@ spec:
         -----BEGIN PUBLIC KEY-----
         <public key content>
         -----END PUBLIC KEY-----
-  
-  match:
-  - selector:
-      matchLabels:
-        policy.sigstore.dev/include: "true"  # Only enforced on labeled namespaces
 ```
+
+**LƯU Ý**: 
+- ❌ KHÔNG có field `match.namespaces` trong spec
+- ✅ SỬ DỤNG namespace labels để control enforcement
 
 ### Key Components
 
-1. **images**: Glob pattern matching images to verify
-   - `ghcr.io/vovudn/**` - All images from your org
-   - `**` - All images (use with caution!)
+1. **images**: Glob pattern matching images cần verify
+   - `ghcr.io/vovudn/**` - Tất cả images từ org của bạn
+   - `**` - Tất cả images (cẩn thận!)
 
-2. **authorities**: How to verify signatures
-   - `key.data`: Public key for verification
-   - Can also use: `keyless` (OIDC), `static`, `attestations`
-
-3. **match**: Which pods to enforce on
-   - `selector.matchLabels`: Namespace label selector
-   - Only enforces on namespaces with `policy.sigstore.dev/include=true`
+2. **authorities**: Cách verify signatures
+   - `key.data`: Public key cho verification
+   - Có thể dùng: `keyless` (OIDC), `static`, `attestations`
 
 ## Namespace Labeling
 
-### Enable Policy
+### Enable Policy cho Namespace
 
 ```bash
 # Label namespace to enable enforcement
