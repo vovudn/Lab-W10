@@ -14,8 +14,11 @@ spec:
     chart: external-secrets
     targetRevision: 0.9.11
     helm:
+      skipCrds: false  # Allow CRD updates
       values: |
         installCRDs: true
+        crds:
+          createAggregateRoles: true
         
         # Resource limits
         resources:
@@ -57,6 +60,7 @@ spec:
     syncOptions:
     - CreateNamespace=true
     - ServerSideApply=true
+    - Replace=true  # Allow replacing CRDs
   
   ignoreDifferences:
   - group: apiextensions.k8s.io
