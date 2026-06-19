@@ -1,5 +1,9 @@
 # ArgoCD App: Deploy ESO Configuration (SecretStore + ExternalSecret)
 # Sync wave 0: Deploy sau khi ESO operator đã sẵn sàng (wave -1)
+#
+# ⚠️ DISABLED: Auto-sync đã tắt vì cần AWS credentials thật
+# Secret db-secret đã được tạo thủ công để app có thể dùng
+#
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -17,9 +21,10 @@ spec:
     server: https://kubernetes.default.svc
     namespace: demo
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
+    # ⚠️ AUTO-SYNC DISABLED - Cần AWS credentials thật để enable
+    # automated:
+    #   prune: true
+    #   selfHeal: true
     syncOptions:
     - ServerSideApply=true
     retry:
