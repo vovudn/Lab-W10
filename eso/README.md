@@ -1,5 +1,44 @@
 # External Secrets Operator (ESO) Configuration
 
+## ⚠️ TRẠNG THÁI HIỆN TẠI - CẦN SỬA
+
+**Lỗi hiện tại**: ExternalSecret không thể sync do AWS credentials không hợp lệ.
+
+```
+Error: UnrecognizedClientException: The security token included in the request is invalid.
+Status code: 400
+```
+
+**Nguyên nhân**: Secret `aws-credentials` trong namespace `demo` đang chứa giá trị placeholder (`AKIAEXAMPLE`, `secretEXAMPLE`), không phải AWS credentials thật.
+
+**Giải pháp ngay**:
+
+```bash
+# 1. Xóa secret placeholder cũ
+kubectl delete secret aws-credentials -n demo
+
+# 2. Tạo secret mới với AWS credentials THẬT (lấy từ AWS IAM Console)
+kubectl create secret generic aws-credentials \
+  --from-literal=access-key-id=YOUR_REAL_AWS_ACCESS_KEY_ID \
+  --from-literal=secret-access-key=YOUR_REAL_AWS_SECRET_ACCESS_KEY \
+  -n demo
+
+# 3. Restart ESO operator để nhận credentials mới
+kubectl rollout restart deployment external-secrets -n external-secrets-system
+
+# 4. Đợi ESO ready (khoảng 30 giây)
+kubectl rollout status deployment external-secrets -n external-secrets-system
+
+# 5. Kiểm tra ExternalSecret status
+kubectl get externalsecret db-credentials -n demo
+# STATUS phải chuyển từ "SecretSyncedError" → "SecretSynced"
+# READY phải chuyển từ "False" → "True"
+```
+
+**Lưu ý**: Bạn cần có AWS Access Key ID và Secret Access Key thật từ AWS IAM user có quyền `SecretsManagerReadWrite`.
+
+---
+
 ## Overview
 
 ESO tự động sync secrets từ AWS Secrets Manager vào Kubernetes với refresh interval < 60s.

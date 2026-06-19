@@ -4,6 +4,45 @@
 
 ---
 
+## ⚠️ TRẠNG THÁI HIỆN TẠI
+
+### ✅ Hoàn thành
+- **Trivy Scanning**: CI pipeline đã tích hợp, scan và fail on HIGH/CRITICAL
+- **Cosign Structure**: Manifests và pipeline đã sẵn sàng (cần generate keys thật)
+
+### 🔧 Cần sửa - ESO
+**Lỗi**: ExternalSecret không sync được do AWS credentials không hợp lệ.
+
+```
+Status: SecretSyncedError
+Error: The security token included in the request is invalid (400)
+```
+
+**Nguyên nhân**: Secret `aws-credentials` có giá trị placeholder (`AKIAEXAMPLE`), không phải credentials thật.
+
+**Sửa ngay**:
+```bash
+# 1. Xóa secret cũ
+kubectl delete secret aws-credentials -n demo
+
+# 2. Tạo secret với credentials THẬT (lấy từ AWS IAM)
+kubectl create secret generic aws-credentials \
+  --from-literal=access-key-id=YOUR_REAL_AWS_ACCESS_KEY_ID \
+  --from-literal=secret-access-key=YOUR_REAL_AWS_SECRET_ACCESS_KEY \
+  -n demo
+
+# 3. Restart ESO để nhận credentials mới
+kubectl rollout restart deployment external-secrets -n external-secrets-system
+
+# 4. Verify (sau 30s)
+kubectl get externalsecret db-credentials -n demo
+# STATUS phải là "SecretSynced", READY phải là "True"
+```
+
+Chi tiết xem: **[eso/README.md](eso/README.md)** (có hướng dẫn đầy đủ ở đầu file)
+
+---
+
 ## 🎯 Overview
 
 Lab 2 mở rộng Lab 1 với 3 component bảo mật quan trọng:
