@@ -22,6 +22,5 @@ spec:
   
   # Match policy chỉ cho namespaces có label
   match:
-  - namespaceSelector:
-      matchLabels:
-        policy.sigstore.dev/include: "true"
+  - namespaces:
+    - demo
